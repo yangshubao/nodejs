@@ -1,0 +1,105 @@
+Node.js是一个面向服务器的框架，立足于Chrome强大的V8 JS引擎。尽管它由C++编写而成，但是它及其应用是运行在JS上的。本文为开发者总结了4个Node.js要点。 
+
+1. 非阻塞(Non-blocking)或异步I/O 
+
+由于Node.js一个服务器端框架，所以它主要工作之一是处理浏览器请求。在传统的I/O系统中，每个请求的发出都是在上一请求到达之后才发出的。所以这被称为阻塞(blocking)I/O。服务器会阻挡其它的请求以处理当前请求，从而导致浏览器等待。 
+
+Node.js不以这种方式来进行I/O处理。如果一个请求需要长时间处理，Node.js会把该请求发送给一个事件循环(event loop)，然后继续处理在调用堆栈(call stack)中的下一请求。当延后请求处理完毕时，它会告知Node.js同时浏览器会做出响应反馈。 
+
+以下使用一个事例来说明。 
+
+Blocking I/O 
+Java代码 
+// take order for table 1 and wait...  
+var order1 = orderBlocking(['Coke', 'Iced Tea']);  
+// once order is ready, take order back to table.  
+serveOrder(order1);  
+// once order is delivered, move on to another table.  
+// take order for table 2 and wait...  
+var order2 = orderBlocking(['Coke', 'Water']);  
+// once order is ready, take order back to table.  
+serveOrder(order2);  
+// once order is delivered, move on to another table.  
+// take order for table 3 and wait...  
+var order3 = orderBlocking(['Iced Tea', 'Water']);  
+// once order is ready, take order back to table.  
+serveOrder(order3);  
+// once order is delivered, move on to another table.  
+
+在这个餐馆例子中，服务员接收了菜单指令，等待饭菜处理，然后在饭菜处理完成后把饭菜端到桌子上。在服务员等候饭菜处理期间，他会拒绝其它客人的菜单指令。 
+Non-blocking I/O 
+Java代码 
+// take order for table 1 and move on...  
+orderNonBlocking(['Coke', 'Iced Tea'], function(drinks){  
+  return serveOrder(drinks);  
+});  
+// take order for table 2 and move on...  
+orderNonBlocking(['Beer', 'Whiskey'], function(drinks){  
+  return serveOrder(drinks);  
+});  
+// take order for table 3 and move on...  
+orderNonBlocking(['Hamburger', 'Pizza'], function(food){  
+  return serveOrder(food);  
+});  
+
+而在非阻塞模式下，服务员会告知厨师他接受到的菜单指令，然后去接收下一桌的指令。当第一桌饭菜处理完毕时，他会为那桌客人上菜，然后继续接收其它客人的指令。这样一来服务员不会由于阻塞指令而造成时间浪费。
+
+2. 原型(Prototype) 
+
+原型在JS中是一个复杂的概念。在典型继承机制语言如Java或C++中，为了实现代码复用，你必须先创建一个类然后透过它来生成对象或透过类扩展来生成对象。但是在JS中没有类似的类概念。在JS中创建一个对象后，你需要透过它来扩展对象或创建新对象。这就叫做原型继承（prototypal inheritence）。 
+
+每个JS对象都连接着一个原型对象并对并继承该对象的属性。每个对象与预定义JS的Object.prototype相联系。如果你透过obj.propName或obj['propName'>方式来查找对象属性但查找失败时，这时可尝试通过obj.hasOwnProperty('propName')的方式进行查找，JS运行时会在在原型对象中查找属性。如果属性不存在于原型链中，那么将返回undefined值。 
+
+让我们用以下例子来进行说明： 
+Java代码 
+if (typeof Object.create !== 'function') {  
+    Object.create = function (o) {  
+        var F = function () {};  
+        F.prototype = o;  
+        return new F();  
+    };  
+var otherPerson = Object.create(person);  
+
+当你创建了一个新对象，你必须选定一个以原型为基础的对象。在这里，我们为对象函数添加了一个create方法。create方法创建了一个以其它对象为原型的对象，并作为参数传入。 
+
+当我们变更新的对象时，它的原型是保持不变的。但是，当我们改动了原型对象，该变更会影响所有基于该原型的对象。 
+
+3. 组件(Modules) 
+
+如果你曾在Java中使用过包，那么Node.js的组件与之类似。如果没有，也不用担心；组件其实是简单的JS文件，用于实现特定的功能。组件模式的意义是让你工作得更加轻松。要使用组件，你必须像在JAVA中导入包一样进行JS文件导入。Node.js中有两种组件 
+
+核心组件（Core Modules）- 核心组件是结合Node.js库被预编译的。其目的是把程序员经常使用的功能开放出来，避免重复劳动。常见的核心组件有HTTP, URL, EVENTS, FILE SYSTEM等等。 
+
+用户自定义组件（UserDefined Modules）- 用户自定义组件是提供给用户使用以实现具体功能的组件。当核心组件不足以满足程序员需要的时候，自定义组件就可派上用场了。 
+
+组件是通过require函数被抽取的。如果这是一个核心组件，那么参数就是组件名。如果这是一个用户自定义组件，那么参数就是其在文件系统中的组件路径。例如： 
+Java代码 
+// extract a core module like this  
+var http = require('http);  
+// extract a user defined module like this  
+var something = require('./folder1/folder2/folder3/something.js');  
+
+4. 回调（Callbacks） 
+
+在JS中，函数是第一类对象。也就是说你可以像对常规对象那样对函数进行所有操作。例如指派函数到一个变量，把这些作为参数传给方法，把它们声明为对象的属性，甚至是把它们从函数里返回。 
+
+回调在JS中是异步函数，可以作为参数传递给其它函数或从其它函数里执行或返回而后再执行。这是回调的基本概念。 
+
+当我们把一个回调函数作为参数传递给另外的函数时，我们传递的仅仅是函数的定义；换言之，我们不会知道回调函数的执行时间。这完全依赖于回调函数机制。它会在稍后某个时间点进行回调调用。这是Node.js的非阻塞或异步行为的基本概念，可用下例进行说明： 
+Java代码 
+setTimeout(function() {  
+    console.log("world");  
+}, 2000)  
+console.log("hello");  
+
+这是一个最简单的调用。我们把一个匿名函数作为参数进行传递，作用是为setTimeout函数进行控制台的输出记录登记。因为这仅仅是个函数定义，我们不知道函数何时会被执行。这取决于setTimeout函数的second参数，即2S后。 
+
+首先，second记录语句记录了对控制台的输出，2S后，在回调函数中的记录语句记录了输出的内容。 
+Java代码 
+// output  
+hello  
+world  
+
+写在最后 
+
+以上4点对Node.js开发者来说是要彻底理解和掌握的，建议多动手来好好体会这4个要点的含义。
